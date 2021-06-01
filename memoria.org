@@ -16,6 +16,10 @@
 #+LATEX_HEADER: \usepackage{float}
 #+LATEX_HEADER: \restylefloat{figure}
 
+\pagebreak
+
+*Nota:*
+
 Se ha utilizado Vagrant con el backend de virtualbox para la creación
 de las máquinas virtuales. Como podemos ver en el archivo
 ~Vagrantfile~, la distribución utilizada es Alpine Linux por su
@@ -24,6 +28,8 @@ ligereza y velocidad a la hora de iniciarse.
 Se ha utilizado Vagrant para hacer más fácil la reproducción de esta
 práctica ya que configura las máquinas virtuales automáticamente en
 base al archivo de configuración, asegurando así un entorno idéntico.
+
+\pagebreak
 
 * Tarea 1: Configuración del direccionamiento IP
   :PROPERTIES:
