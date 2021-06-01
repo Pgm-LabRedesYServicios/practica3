@@ -1,0 +1,274 @@
+#+TITLE: Memoria
+#+AUTHOR: Pedro Gómez Martín y Mario Aguilera Alcalde
+
+#+LANGUAGE: spanish
+
+#+LATEX_CLASS_OPTIONS: [a4paper]
+#+LATEX_HEADER: \usepackage[a4paper, margin=2.5cm]{geometry}
+#+LATEX_HEADER: \usepackage[utf8]{inputenc}
+#+LATEX_HEADER: \usepackage[spanish]{babel}
+#+LATEX_HEADER: \usepackage[bottom]{footmisc}
+
+#+LATEX_HEADER: \usepackage{amsmath}
+
+#+LATEX_HEADER: \usepackage{minted}
+#+LATEX_HEADER: \usemintedstyle{solarized-light}
+#+LATEX_HEADER: \usepackage{float}
+#+LATEX_HEADER: \restylefloat{figure}
+
+Se ha utilizado Vagrant con el backend de virtualbox para la creación
+de las máquinas virtuales. Como podemos ver en el archivo
+~Vagrantfile~, la distribución utilizada es Alpine Linux por su
+ligereza y velocidad a la hora de iniciarse.
+
+Se ha utilizado Vagrant para hacer más fácil la reproducción de esta
+práctica ya que configura las máquinas virtuales automáticamente en
+base al archivo de configuración, asegurando así un entorno idéntico.
+
+* Tarea 1: Configuración del direccionamiento IP
+  :PROPERTIES:
+  :CUSTOM_ID: tarea-1-configuración-del-direccionamiento-ip
+  :END:
+En esta primera parte de la práctica, únicamente se pide que configure
+una de las VMs que está ejecutando para asignarle la dirección IP
+~10.10.5.5~, con una máscara de 32 bits en la interfaz loopback y la
+dirección IPv6 ~3ff::5~ con una máscara de 122 bits en la interfaz que
+conecta las VMs entre sí. Una vez haya realizado estos pasos, elimine
+dichas asignaciones para volver al estado inicial. NOTA: no elimine las
+direcciones IP ya existentes en su equipo.
+
+En la primera foto se observa la prueba de conectividad al empezar las
+maquinas:
+
+[[file:media/image1.png]]
+
+** Indique los comandos necesarios para añadir dichas direcciones IP y para eliminarlas:
+   :PROPERTIES:
+   :CUSTOM_ID: indique-los-comandos-necesarios-para-añadir-dichas-direcciones-ip-y-para-eliminarlas
+   :END:
+
+#+begin_src sh
+sudo ip addr add 10.10.5.5 dev lo
+sudo ip addr del 127.0.0.1 dev lo
+sudo ip addr add 3ff::5/122 dev lo
+#+end_src
+
+[[file:media/image2.png]]
+
+#+begin_src sh
+sudo ip addr del ::1 dev lo
+#+end_src
+
+* Tarea 2: Configuración de rutas estáticas
+  :PROPERTIES:
+  :CUSTOM_ID: tarea-2-configuración-de-rutas-estáticas
+  :END:
+Para dotar de conectividad a un conjunto de redes que no están
+directamente conectadas (en cuyo caso Linux lo hace automáticamente) se
+va a comenzar haciendo uso de la herramienta ip para instalar rutas de
+manera manual. Puesto que la maqueta compuesta de dos VMs de la que se
+dispone no tiene redes que no se encuentren directamente conectadas, se
+va a emplear la interfaz de loopback de dichas VMs para definir en cada
+una de ellas una red diferente, las cuales no están directamente
+conectadas.
+
+** Indique y explique brevemente los comandos introducidos para realizar este apartado
+   :PROPERTIES:
+   :CUSTOM_ID: indique-y-explique-brevemente-los-comandos-introducidos-para-realizar-este-apartado
+   :END:
+
+#+begin_src sh
+# sudo ip route add {RED} via {IP} dev {DISPOSITIVO}
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo ip route add 10.10.2.0/24 via 192.168.112.3
+sudo ip route add 10.10.1.0/24 via 192.168.112.2
+#+end_src
+
+** Explique cómo ha comprobado la conectividad y muestre el resultado de los comandos que demuestran dicha conectividad.
+   :PROPERTIES:
+   :CUSTOM_ID: explique-cómo-ha-comprobado-la-conectividad-y-muestre-el-resultado-de-los-comandos-que-demuestran-dicha-conectividad.
+   :END:
+
+#+begin_src sh
+sudo ping -A -c 10 10.10.2.1
+#+end_src
+
+[[file:media/image4.png]]
+
+** Indique los comandos necesarios para eliminar las rutas creadas y muestre cómo dichas rutas se han eliminado.
+   :PROPERTIES:
+   :CUSTOM_ID: indique-los-comandos-necesarios-para-eliminar-las-rutas-creadas-y-muestre-cómo-dichas-rutas-se-han-eliminado.
+   :END:
+#+begin_src sh
+sudo ip route del 10.10.2.0/24 via 192.168.112.3
+sudo ip route del 10.10.1.0/24 via 192.168.112.2
+#+end_src
+
+[[file:media/image5.png]]
+
+* Tarea 3: Configuración de protocolos de encaminamiento
+  :PROPERTIES:
+  :CUSTOM_ID: tarea-3-configuración-de-protocolos-de-encaminamiento
+  :END:
+Esta tarea tiene el mismo objetivo que la tarea 2, pero ahora el
+encaminamiento no va a realizarse de manera estática sino dinámica, para
+lo cual va a hacerse uso de protocolos de encaminamiento. Más
+concretamente, se va a emplear el protocolo OSPF para tener conectividad
+entre la red ~10.10.1.1/32~ y ~10.10.2.1/32~, definidas en las
+interfaces de loopback de la VM1 y VM2, respectivamente.
+
+** Explique detalladamente los pasos que siga para realizar este apartado, así como el contenido de los ficheros de configuración que haya creado o modificado
+   :PROPERTIES:
+   :CUSTOM_ID: explique-detalladamente-los-pasos-que-siga-para-realizar-este-apartado-así-como-el-contenido-de-los-ficheros-de-configuración-que-haya-creado-o-modificado
+   :END:
+*** DAEMONS:
+#+begin_src
+ospfd=yes
+ospf6d=no
+ripd=no
+ripngd=no
+isisd=no
+babeld=no
+#+end_src
+
+*** OSPFD.CONF:
+#+begin_src
+interface eth1
+ip ospf hello-interval 5
+router ospf
+redistribute connected
+network 192.168.112.0/24 area 0.0.0.1
+#+end_src
+
+*** ZEBRA.CONF
+#+begin_src
+interface eth1
+interface lo
+#+end_src
+
+** Explique cómo ha comprobado la conectividad y muestre el resultado de los comandos que demuestran dicha conectividad
+   :PROPERTIES:
+   :CUSTOM_ID: explique-cómo-ha-comprobado-la-conectividad-y-muestre-el-resultado-de-los-comandos-que-demuestran-dicha-conectividad
+   :END:
+Mediante un ping desde una VM y luego desde la otra.
+
+[[file:media/image9.png]]
+
+** Empleando Wireshark, analice los paquetes OSPF observando cual es el intervalo de tiempo entre dos paquetes hello consecutivos. Cambie dicho intervalo de tiempo e indique los pasos seguidos, así como muestre mediante capturas de Wireshark que dicho intervalo ha sido cambiado con éxito.
+   :PROPERTIES:
+   :CUSTOM_ID: empleando-wireshark-analice-los-paquetes-ospf-observando-cual-es-el-intervalo-de-tiempo-entre-dos-paquetes-hello-consecutivos.-cambie-dicho-intervalo-de-tiempo-e-indique-los-pasos-seguidos-así-como-muestre-mediante-capturas-de-wireshark-que-dicho-intervalo-ha-sido-cambiado-con-éxito.
+   :END:
+INTERVALO DE 2 SEC EN EL WIRESHARK EN EL HELLO-INTERVAL
+
+[[file:media/image10.png]]
+
+INTERVALO DE 5 SEC EN EL WIRESHARK EN EL HELLO-INTERVAL
+
+[[file:media/image11.png]]
+
+* Tarea 4: Configuración de túneles, protocolos de encaminamiento e IPv6
+  :PROPERTIES:
+  :CUSTOM_ID: tarea-4-configuración-de-túneles-protocolos-de-encaminamiento-e-ipv6
+  :END:
+Partiendo del resultado de la tarea 3, donde se dispone de tres redes y
+se emplea OSPF para dotar de conectividad a las redes que no están
+directamente conectadas (las definidas en las interfaces loopback de las
+VMs), en esta tarea se va a configurar un túnel IPv6 sobre IPv4 que
+interconectará dos encaminadores, utilizando OSPF como protocolo de
+encaminamiento de IPv4 y RIPng como protocolo de encaminamiento de IPv6.
+Para la realización de esta tarea, se requieren dos subtareas:
+
+** Tarea 4.1: Definición de túnel IPv6 sobre IPv4
+   :PROPERTIES:
+   :CUSTOM_ID: tarea-4.1-definición-de-túnel-ipv6-sobre-ipv4
+   :END:
+Definición del túnel IPv& sobre IPv4:
+*** Túnel VM1 a VM2
+#+begin_src sh
+sudo ip tunnel add mape mode sit local 192.168.112.2 remote 192.168.112.3
+ip tunnel show
+#+end_src
+
+[[file:media/image12.png]]
+
+*** Túnel VM2 a VM1
+#+begin_src sh
+sudo ip tunnel add mape mode sit local 192.168.112.3 remote 192.168.112.2
+ip tunnel show
+#+end_src
+
+[[file:media/image15.png]]
+
+*** Comprobación
+**** Comprobamos el túnel en VM1:
+#+begin_src sh
+sudo ip addr add 200::2:1/128 dev lo
+ip addr show
+#+end_src
+
+[[file:media/image17.png]]
+
+**** Comprobamos el túnel en VM2:
+#+begin_src sh
+sudo ip addr add 200::1:1/128 dev lo
+ip addr show
+#+end_src
+
+[[file:media/image19.png]]
+
+***  ¿Debe emplearse el mismo nombre de túnel en VM1 y en VM2? Justifique su respuesta.
+    :PROPERTIES:
+    :CUSTOM_ID: debe-emplearse-el-mismo-nombre-de-túnel-en-vm1-y-en-vm2-justifique-su-respuesta.
+    :END:
+
+    No tiene por qué, ya que lo que importa son las direcciones.
+
+** Tarea 4.2: Conectividad IPv6 mediante RIPng
+   :PROPERTIES:
+   :CUSTOM_ID: tarea-4.2-conectividad-ipv6-mediante-ripng
+   :END:
+*** Explique detalladamente los pasos que siga para realizar este apartado, así como el contenido de los ficheros de configuración que haya modificado.
+    :PROPERTIES:
+    :CUSTOM_ID: explique-detalladamente-los-pasos-que-siga-para-realizar-este-apartado-así-como-el-contenido-de-los-ficheros-de-configuración-que-haya-modificado.
+    :END:
+Para usar RIPng editaremos el archivo zebra:
+
+#+begin_src
+interface eth1
+interface mape
+interface lo
+#+end_src
+
+Y crearemos un archivo nuevo llamado ripngd:
+
+#+begin_src
+router rping
+network mape
+redistribute connected
+#+end_src
+
+Y hacemos un restart antes de comprobar la conectividad:
+
+[[file:media/image22.png]]
+
+*** Explique cómo ha comprobado la conectividad y muestre el resultado de los comandos que demuestran dicha conectividad
+    :PROPERTIES:
+    :CUSTOM_ID: explique-cómo-ha-comprobado-la-conectividad-y-muestre-el-resultado-de-los-comandos-que-demuestran-dicha-conectividad-1
+    :END:
+Mediante un ping en ambas maquinas:
+
+[[file:media/image23.png]]
+
+*** Desde VM1 haga un ping a la dirección 200::2:1 y, capturando uno de dichos pings (en sentido de ida) con Wireshark, rellene la siguiente tabla:
+    :PROPERTIES:
+    :CUSTOM_ID: desde-vm1-haga-un-ping-a-la-dirección-20021-y-capturando-uno-de-dichos-pings-en-sentido-de-ida-con-wireshark-rellene-la-siguiente-tabla
+    :END:
+| Pila de protocolos completa | IPv6 y IPv4 |
+|-----------------------------+-------------|
+| Dirección IP origen IPv4    | 10.0.2.15   |
+| Dirección IP destino IPv4   | 10.0.2.4    |
+| Dirección IP origen IPv6    | 200::1:1    |
+| Dirección IP destinoIPv6    | 200::2:1    |
+| TTL                         | 64          |
+| Hop limit                   | 64          |
+| TOS (o DSCP)                | 0           |
