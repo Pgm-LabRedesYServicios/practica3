@@ -15,7 +15,7 @@ Vagrant.configure('2') do |conf|
     v.linked_clone = true
   end
 
-  conf.vm.synced_folder 'configs/', '/home/vagrant/mnt'
+  conf.vm.synced_folder 'caps/', '/home/vagrant/mnt'
 
   # Machine 1
   conf.vm.define 'alpine1' do |config|
